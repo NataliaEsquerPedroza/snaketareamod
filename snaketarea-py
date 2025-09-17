@@ -1,0 +1,171 @@
+"""
+Snake, classic arcade game (modded).
+
+Exercises solved:
+1) Speed control (F faster, S slower; also speeds up on eat).
+2) Wrap around edges (toroidal world).
+3) Moving food (random steps at intervals).
+4) Mouse clicks steer the snake toward the click.
+"""
+
+from random import randrange, choice
+from turtle import *
+
+from freegames import square, vector
+
+# --------------------------- Config ---------------------------
+WRAP_EDGES = True           # True: atravesar bordes y aparecer del otro lado
+FOOD_MOVES = True           # True: la comida se mueve aleatoriamente
+FOOD_MOVE_CHANCE = 0.30     # Probabilidad de mover comida en cada tick
+STEP = 10                   # Tamaño de celda
+SIZE = 9                    # Tamaño del cuadrado que se dibuja
+MIN_X, MAX_X = -200, 190    # Límites del tablero en píxeles (múltiplos de 10)
+MIN_Y, MAX_Y = -200, 190
+
+INITIAL_DELAY = 120         # ms entre movimientos
+MIN_DELAY = 40              # más rápido permitido
+MAX_DELAY = 300             # más lento permitido
+EAT_ACCEL = 3               # reduce delay al comer (acelera)
+
+# --------------------------- Estado ---------------------------
+food = vector(0, 0)
+snake = [vector(10, 0)]
+aim = vector(0, -STEP)
+delay = INITIAL_DELAY       # delay actual (ms)
+
+# --------------------------- Utilidades ---------------------------
+def change(x, y):
+    """Change snake direction (no 180° turn restriction here)."""
+    aim.x = x
+    aim.y = y
+
+
+def wrap_coord(v, lo, hi):
+    """Wrap coord v to [lo, hi] in steps of STEP (toroidal)."""
+    if v < lo:
+        return hi
+    if v > hi:
+        return lo
+    return v
+
+
+def move_food():
+    """Move food one random step, wrapping at edges if needed."""
+    options = [vector(STEP, 0), vector(-STEP, 0), vector(0, STEP), vector(0, -STEP)]
+    step = choice(options)
+    newpos = food.copy()
+    newpos.move(step)
+
+    if WRAP_EDGES:
+        newpos.x = wrap_coord(newpos.x, MIN_X, MAX_X)
+        newpos.y = wrap_coord(newpos.y, MIN_Y, MAX_Y)
+    else:
+        # Si no hay wrap, mantener comida dentro de límites
+        if not (MIN_X <= newpos.x <= MAX_X and MIN_Y <= newpos.y <= MAX_Y):
+            return  # cancelar movimiento si sale
+    food.x, food.y = newpos.x, newpos.y
+
+
+def steer_to_click(x, y):
+    """
+    Steer the snake toward a mouse click.
+    Prioriza el eje con mayor distancia respecto a la cabeza.
+    """
+    head = snake[-1]
+    dx = x - head.x
+    dy = y - head.y
+
+    if abs(dx) >= abs(dy):
+        change(STEP if dx > 0 else -STEP, 0)
+    else:
+        change(0, STEP if dy > 0 else -STEP)
+
+
+def faster():
+    """Speed up (reduce delay)."""
+    global delay
+    delay = max(MIN_DELAY, delay - 10)
+
+
+def slower():
+    """Slow down (increase delay)."""
+    global delay
+    delay = min(MAX_DELAY, delay + 10)
+
+
+# --------------------------- Lógica principal ---------------------------
+def move():
+    """Move snake forward one segment."""
+    global delay
+
+    head = snake[-1].copy()
+    head.move(aim)
+
+    # Bordes
+    if WRAP_EDGES:
+        head.x = wrap_coord(head.x, MIN_X, MAX_X)
+        head.y = wrap_coord(head.y, MIN_Y, MAX_Y)
+    else:
+        # Si no hay wrap y se sale -> game over
+        if head.x < MIN_X or head.x > MAX_X or head.y < MIN_Y or head.y > MAX_Y:
+            square(head.x, head.y, SIZE, 'red')
+            update()
+            return
+
+    # Colisión con uno mismo -> game over
+    if head in snake:
+        square(head.x, head.y, SIZE, 'red')
+        update()
+        return
+
+    snake.append(head)
+
+    # Comer
+    if head == food:
+        print('Snake:', len(snake))
+        # Reubicar comida aleatoria en la grilla
+        food.x = randrange(-20, 20) * (STEP // 2)  # asegurar múltiplos del grid
+        food.y = randrange(-20, 20) * (STEP // 2)
+        # Acelerar un poquito al comer
+        delay = max(MIN_DELAY, delay - EAT_ACCEL)
+    else:
+        snake.pop(0)
+
+    # Mover comida de vez en cuando
+    if FOOD_MOVES:
+        from random import random
+        if random() < FOOD_MOVE_CHANCE:
+            move_food()
+
+    clear()
+
+    # Dibujar serpiente
+    for body in snake:
+        square(body.x, body.y, SIZE, 'black')
+
+    # Dibujar comida
+    square(food.x, food.y, SIZE, 'green')
+
+    update()
+    ontimer(move, delay)
+
+
+# --------------------------- Setup Turtle ---------------------------
+setup(420, 420, 370, 0)
+hideturtle()
+tracer(False)
+listen()
+
+# Controles con teclado (además del mouse)
+onkey(lambda: change(STEP, 0), 'Right')
+onkey(lambda: change(-STEP, 0), 'Left')
+onkey(lambda: change(0, STEP), 'Up')
+onkey(lambda: change(0, -STEP), 'Down')
+onkey(faster, 'f')   # más rápido
+onkey(slower, 's')   # más lento
+
+# Control con mouse
+onscreenclick(steer_to_click)
+
+move()
+done()
