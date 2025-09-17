@@ -2,10 +2,10 @@
 Snake, classic arcade game (modded).
 
 Exercises solved:
-1) Speed control (F faster, S slower; also speeds up on eat).
-2) Wrap around edges (toroidal world).
-3) Moving food (random steps at intervals).
-4) Mouse clicks steer the snake toward the click.
+1) Controles de velocidad (F = Mas rapido, S = Mas lento)
+2) Atravesar Paredes.
+3) Comida con movimiento.
+4) La serpiente se mueve hacia la direccion del click del mouse.
 """
 
 from random import randrange, choice
@@ -35,13 +35,11 @@ delay = INITIAL_DELAY       # delay actual (ms)
 
 # --------------------------- Utilidades ---------------------------
 def change(x, y):
-    """Change snake direction (no 180° turn restriction here)."""
     aim.x = x
     aim.y = y
 
 
 def wrap_coord(v, lo, hi):
-    """Wrap coord v to [lo, hi] in steps of STEP (toroidal)."""
     if v < lo:
         return hi
     if v > hi:
@@ -50,7 +48,6 @@ def wrap_coord(v, lo, hi):
 
 
 def move_food():
-    """Move food one random step, wrapping at edges if needed."""
     options = [vector(STEP, 0), vector(-STEP, 0), vector(0, STEP), vector(0, -STEP)]
     step = choice(options)
     newpos = food.copy()
@@ -67,10 +64,6 @@ def move_food():
 
 
 def steer_to_click(x, y):
-    """
-    Steer the snake toward a mouse click.
-    Prioriza el eje con mayor distancia respecto a la cabeza.
-    """
     head = snake[-1]
     dx = x - head.x
     dy = y - head.y
@@ -82,13 +75,11 @@ def steer_to_click(x, y):
 
 
 def faster():
-    """Speed up (reduce delay)."""
     global delay
     delay = max(MIN_DELAY, delay - 10)
 
 
 def slower():
-    """Slow down (increase delay)."""
     global delay
     delay = min(MAX_DELAY, delay + 10)
 
@@ -106,13 +97,11 @@ def move():
         head.x = wrap_coord(head.x, MIN_X, MAX_X)
         head.y = wrap_coord(head.y, MIN_Y, MAX_Y)
     else:
-        # Si no hay wrap y se sale -> game over
         if head.x < MIN_X or head.x > MAX_X or head.y < MIN_Y or head.y > MAX_Y:
             square(head.x, head.y, SIZE, 'red')
             update()
             return
 
-    # Colisión con uno mismo -> game over
     if head in snake:
         square(head.x, head.y, SIZE, 'red')
         update()
